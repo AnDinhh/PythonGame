@@ -5,20 +5,29 @@ import time
 import math
 from pygame import mixer
 from dataclasses import dataclass
+
 pg.init()
 game_state = "start_menu"
+#Set chiều rộng, số cột, dòng
 width, columns, rows = 400, 15, 30
+
 distance = width // columns # 400/15 = 26
+#Set chiều cao
 height = distance * rows
 
-#print(grid)
+#Set lưới
 grid = [0] * columns * rows
 
+#Set kích thước cho button 
 BUTTON_WIDTH = 200
 BUTTON_HEIGHT = 50
 BUTTON_COLOR = (255, 0, 0)
 BUTTON_TEXT_COLOR = (255, 255, 255)
+
+#Set tốc độ, điểm, cấp
 speed, score, level, temp = 1000, 0, 1, 0
+
+#Âm thanh trò chơi
 mixer.init()
 start = pg.mixer.Sound("start.wav" )
 point = pg.mixer.Sound("score.wav" )
@@ -26,34 +35,33 @@ fullrow = pg.mixer.Sound("fullrow.wav" )
 rotateSound = pg.mixer.Sound("rotateSound.wav" )
 
 gameOver = 0;
+
 # load hình 
 picture = [] # 
 for n in range(9):
   picture.append(pg.transform.scale(pg.image.load(f'T_{n}.jpg'), (distance, distance)))
+
+#Khung hình
 screen = pg.display.set_mode([width, height])
+#Title
 pg.display.set_caption('Tetris Game')
-# tạo các sự kiện
+
+#Tạo các sự kiện
 tetroromino_down = pg.USEREVENT+1
 #speedup = pg.USEREVENT+2
 pg.time.set_timer(tetroromino_down, speed)
 #pg.time.set_timer(speedup, 30_000) # tốc độ rơi xuống
 pg.key.set_repeat(0, 100)
-#pause game
+#Pause game
 paused = False
 
-#màn hình chính
+#Màn hình chính
 show_start_screen = True
 screen_start = pg.image.load(r'start.jpg')
 screen_start = pg.transform.scale(screen_start, (width, height))
-
-#màn hình khi kết thúc
-screen_over = pg.image.load(r'start.jpg')
-screen_over = pg.transform.scale(screen_over, (width, height))
-
-screen_over_rect = screen_over.get_rect(center = (screen.get_rect().center))
 screen_start_rect = screen_start.get_rect(center = (screen.get_rect().center))
 
-# tetroromino cho các chữ cái O, I, J, L, S, Z, T
+#Tetroromino cho các chữ cái O, I, J, L, S, Z, T
 tetrorominos = [
               #O
               [0, 1, 1, 0, 
@@ -61,20 +69,20 @@ tetrorominos = [
                0, 0, 0, 0, 
                0, 0, 0, 0],
               #I
-               [0, 0, 0, 0, 
-                2, 2, 2, 2, 
-                0, 0, 0, 0,
-                0, 0, 0, 0], 
+               [0, 2, 0, 0, 
+                0, 2, 0, 0, 
+                0, 2, 0, 0,
+                0, 2, 0, 0], 
                #J
-               [0, 0, 0, 0, 
-                3, 3, 3, 0, 
+               [0, 0, 3, 0, 
                 0, 0, 3, 0, 
+                0, 3, 3, 0, 
                 0, 0, 0, 0], 
-               #L
-               [0, 0, 4, 0, 
-                4, 4, 4, 0,
-                0, 0, 0, 0, 
-                0, 0, 0, 0], 
+               #L 
+               [0, 4, 0, 0, 
+                0, 4, 0, 0,
+                0, 4, 4, 0, 
+                0, 0, 0, 0],
                #S
                [0, 5, 5, 0, 
                 5, 5, 0, 0, 
@@ -91,12 +99,12 @@ tetrorominos = [
                 0, 7, 0, 0,
                 0, 0, 0, 0]
                ] 
-
+#Font chữ và button
 font = pg.font.Font(None, 36)
 start_button = pg.Rect((width - BUTTON_WIDTH) // 2, height // 2, BUTTON_WIDTH, BUTTON_HEIGHT)
 start_text = font.render("START GAME", True, BUTTON_COLOR)
 
-#tạo lớp và định nghĩa các hàm
+#Tạo lớp và định nghĩa các hàm
 @dataclass
 
 class tetroromino():
@@ -104,17 +112,23 @@ class tetroromino():
   row: int = 0 # vị trí xuất hiện đầu tiên
   column: int = 5
   def show(self):
-    screen.fill((128, 128, 128))
+    #Màu background
+    screen.fill((255, 255, 255))
+    
+    #Set điểm và cấp cho chúng hiện lên màn hình
     textsurface = pg.font.SysFont('consolas', 40).render(f'{score:,}', False, (255, 255, 255))
     screen.blit(textsurface, (width // 2 - textsurface.get_width() // 2, 5))
     textsurface = pg.font.SysFont('consolas', 20).render(f'Level: {level}', False, (255, 255, 255))
     screen.blit(textsurface, (width // 2 - textsurface.get_width() // 2, 55))
-    for n, color in enumerate(self.tetro): # enumerate tạo list dạng liệt kê
+    
+    # enumerate tạo list dạng liệt kê
+    for n, color in enumerate(self.tetro):
       if color > 0:
         x = (self.column + n % 4) * distance
         y = (self.row + n // 4) * distance
         screen.blit(picture[color], (x, y))
 
+  #Kiểm tra xem một tetromino đã cho có thể được đặt trong một lưới trò chơi được xác định trước hay không
   def check(self, r, c):
     for n, color in enumerate(self.tetro):
       if color > 0:
@@ -124,6 +138,7 @@ class tetroromino():
           return False
     return True
 
+  #Cập nhập vị trí mới
   def update(self, r, c):
     if self.check(self.row + r, self.column + c):
       self.row += r
@@ -131,33 +146,39 @@ class tetroromino():
       return True
     return False
 
+  #Xoay khối gạch
   def rotate(self):
     savetetro = self.tetro.copy()
-    #print('self.tetro=',self.tetro)
     for n, color in enumerate(savetetro):
+      #Công thức
       self.tetro[(2-(n % 4))*4+(n // 4)] = color
     if not self.check(self.row, self.column):
       self.tetro = savetetro.copy()
 
+  #Dưa các khối trong tetromino xuống lưới và đặt chúng vào vị trí cuối cùng của lưới.
 def ObjectOnGridline():
   for n, color in enumerate(character.tetro):
     if color > 0:
       grid[(character.row + n // 4)*columns+(character.column + n % 4)] = color
 
+  #Xoá các dòng đầy 
 def DeleteFullRows():
   fullrows = 0
   pg.mixer.Sound.play(point)
   for row in range(rows):
     for column in range(columns):
-      if grid[row*columns+column] == 0: # in ra một cột có 30 số 0 ???#kiểm tra nếu dòng nào có ô rỗng thì bỏ qua
+      #kiểm tra nếu dòng nào có ô rỗng thì bỏ qua
+      if grid[row*columns+column] == 0: 
         break
     else:
       del grid[row*columns:row*columns+columns] # [2, 1, 1, 1, 1, 7, 7, 7, 2, 2, 2, 2, 7, 7, 7]
       grid[0:0] = [0]*columns 
-      pg.mixer.Sound.play(fullrow)# trả về []
+      pg.mixer.Sound.play(fullrow) # trả về []
       fullrows += 1
-  return fullrows**2*100 # xóa càng nhiều dòng cùng lúc điểm càng lũy thừa cao lên nhiều lần
+      # xóa càng nhiều dòng cùng lúc điểm càng lũy thừa cao lên nhiều lần
+  return fullrows**2*100 
 
+  #Kiểm tra bất kì cột nào đã đầy
 def CheckFullColumns():
   count = 0
   for column in range(columns):
@@ -169,6 +190,8 @@ def CheckFullColumns():
         if not has_empty_cell:
             count += 1
   return count
+
+  #Game Over 
 def is_game_over():
     # Kiểm tra xem có cột nào đầy đủ không
     if CheckFullColumns() > 0:
@@ -180,7 +203,7 @@ def is_game_over():
             return True
     return False
 character = tetroromino(rnd.choice(tetrorominos))
-
+  #Vẽ nút "Start game" trên màn hình của trò chơi
 def draw_start_button():
     button_x = (width - BUTTON_WIDTH) // 2
     button_y = (height - BUTTON_HEIGHT) // 2
