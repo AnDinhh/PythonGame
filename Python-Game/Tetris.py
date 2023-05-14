@@ -1,6 +1,5 @@
 import pygame as pg
 import random as rnd
-import turtle
 import time
 import math
 from pygame import mixer
@@ -33,13 +32,14 @@ start = pg.mixer.Sound("start.wav" )
 point = pg.mixer.Sound("score.wav" )
 fullrow = pg.mixer.Sound("fullrow.wav" )
 rotateSound = pg.mixer.Sound("rotateSound.wav" )
+gameover = pg.mixer.Sound("gameOver.wav" )
 
-gameOver = 0;
+gameOver = 0
 
 # load hình 
 picture = [] # 
 for n in range(9):
-  picture.append(pg.transform.scale(pg.image.load(f'T_{n}.jpg'), (distance, distance)))
+  picture.append(pg.transform.scale(pg.image.load(f'T_{1}.jpg'), (distance, distance)))
 
 #Khung hình
 screen = pg.display.set_mode([width, height])
@@ -60,6 +60,11 @@ show_start_screen = True
 screen_start = pg.image.load(r'start.jpg')
 screen_start = pg.transform.scale(screen_start, (width, height))
 screen_start_rect = screen_start.get_rect(center = (screen.get_rect().center))
+
+show_end_screen = False
+screen_end = pg.image.load(r'end.jpg')
+screen_end = pg.transform.scale(screen_end, (width, height))
+screen_end_rect = screen_end.get_rect(center = (screen.get_rect().center))
 
 #Tetroromino cho các chữ cái O, I, J, L, S, Z, T
 tetrorominos = [
@@ -113,7 +118,7 @@ class tetroromino():
   column: int = 5
   def show(self):
     #Màu background
-    screen.fill((255, 255, 255))
+    screen.fill((0, 0, 0))
     
     #Set điểm và cấp cho chúng hiện lên màn hình
     textsurface = pg.font.SysFont('consolas', 40).render(f'{score:,}', False, (255, 255, 255))
@@ -126,7 +131,7 @@ class tetroromino():
       if color > 0:
         x = (self.column + n % 4) * distance
         y = (self.row + n // 4) * distance
-        screen.blit(picture[color], (x, y))
+        screen.blit(picture[1], (x, y))
 
   #Kiểm tra xem một tetromino đã cho có thể được đặt trong một lưới trò chơi được xác định trước hay không
   def check(self, r, c):
@@ -196,13 +201,12 @@ def is_game_over():
     # Kiểm tra xem có cột nào đầy đủ không
     if CheckFullColumns() > 0:
         return True
-
     # Kiểm tra xem có ô trống ở hàng đầu tiên không
     for column in range(columns):
         if grid[column] == 0:
             return True
     return False
-character = tetroromino(rnd.choice(tetrorominos))
+character = tetroromino(tetrorominos[0])
   #Vẽ nút "Start game" trên màn hình của trò chơi
 def draw_start_button():
     button_x = (width - BUTTON_WIDTH) // 2
@@ -215,7 +219,7 @@ def draw_start_button():
     screen.blit(screen_start, screen_start_rect)
     screen.blit(text, text_rect)
     pg.mixer.Sound.play(start)
-    
+
 status = True
 clock = pg.time.Clock()
 
@@ -249,25 +253,32 @@ while status:
           clock.tick(80)
           pg.time.delay(100)
           for event in pg.event.get():
-            if event.type == pg.QUIT:
+            if event.type == pg.QUIT  :
               pg.quit()
               status2 = False
             if event.type == tetroromino_down:
-              
               # kiểm tra khi mỗi chữ cái được đặt xong tại một vị trí
               if not character.update(1, 0):
-                ObjectOnGridline()
-                
+                ObjectOnGridline()    
                 gameOver = CheckFullColumns()
                 if gameOver > 0 :
+                  screen.blit(screen_end, screen_end_rect)
+                  pg.mixer.Sound.play(gameover)
+                  textsurface = pg.font.SysFont('consolas', 50).render(f'{score:,}', False, (255, 255, 255))
+                  screen.blit(textsurface, (width // 2 - textsurface.get_width() // 2, 5))
+                  textsurface = pg.font.SysFont('consolas', 30).render(f'Level: {level}', False, (255, 255, 255))
+                  screen.blit(textsurface, (width // 2 - textsurface.get_width() // 2, 100))
+                  pg.display.update()
+                  clock.tick(1000)
+                  pg.time.delay(5000)
                   pg.quit()
                 score += DeleteFullRows() 
                 if score > 0 and score//500 >= level and temp != score:
-                  speed = int(speed * 0.8)
+                  speed = int(speed * 0.1)
                   pg.time.set_timer(tetroromino_down, speed)
                   level = score // 500 + 1
                   temp = score 
-                character = tetroromino(rnd.choice(tetrorominos))
+                character = tetroromino(tetrorominos[0])
             if event.type == pg.KEYDOWN:
               if event.key == pg.K_LEFT:
                 #dòng không đổi, cột giảm 1
@@ -275,7 +286,7 @@ while status:
               if event.key == pg.K_RIGHT:
                 character.update(0, 1)
               if event.key == pg.K_DOWN:
-                character.update(1, 0)
+                character.update(3, 0)
               if event.key == pg.K_SPACE:
                 character.rotate()
                 pg.mixer.Sound.play(rotateSound)
